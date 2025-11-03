@@ -116,7 +116,12 @@ app.use(session({
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000*60*60*24, httpOnly: true, sameSite: "lax" }
+  cookie: {
+  maxAge: 1000*60*60*24,
+  httpOnly: true,
+  sameSite: "none",
+  secure: true
+}
 }));
 
 // Sesiones Iniciar Sesion
