@@ -231,7 +231,7 @@
 
     // Enviar datos al backend
     try {
-      const res = await fetch("http://localhost:10000/registrar", {
+      const res = await fetch("/registrar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, correo, contrasena: pass, rol })
@@ -272,7 +272,7 @@
     }
 
     try {
-      const res = await fetch("http://localhost:10000/login", {
+      const res = await fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
