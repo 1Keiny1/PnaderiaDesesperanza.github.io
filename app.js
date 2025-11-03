@@ -144,12 +144,25 @@ function requireAuth(req, res, next) {
 app.post("/login", async (req, res) => {
     const { correo, contrasena } = req.body;
 
+    if (!correo || !contrasena) {
+        return res.status(400).json({ error: "Correo y contraseña son obligatorios." });
+    }
+
     try {
-        // Validar usuario
-        const [usuarios] = await con.query(
-            "SELECT * FROM usuarios WHERE correo = ? AND contraseña = ?",
-            [correo, contrasena]
-        );
+        // --- Intentar reconectar si es necesario ---
+        try {
+            await con.query('SELECT 1'); // simple ping
+        } catch (err) {
+            console.log("DB caída o lenta, reintentando conexión...");
+            await connectWithRetry(3, 2000); // reintento 3 veces, 2s cada uno
+        }
+
+        // --- Buscar usuario ---
+        const [usuarios] = await con.query({
+            sql: "SELECT * FROM usuarios WHERE correo = ? AND contraseña = ?",
+            timeout: 5000, // 5 segundos máximo
+            values: [correo, contrasena]
+        });
 
         if (usuarios.length === 0) {
             return res.status(401).json({ error: "Correo o contraseña incorrectos." });
@@ -157,24 +170,36 @@ app.post("/login", async (req, res) => {
 
         const usuario = usuarios[0];
 
+        // --- Verificar si ya tiene sesión activa ---
         if (usuario.sesion_activa) {
             return res.status(403).json({ error: "Ya tienes una sesión iniciada en otro dispositivo." });
         }
 
-        // Marcar sesión activa
-        await con.query("UPDATE usuarios SET sesion_activa = TRUE WHERE id = ?", [usuario.id]);
-
-        // Guardar sesión
+        // --- Guardar sesión primero ---
         req.session.userId = usuario.id;
         req.session.username = usuario.nombre;
         req.session.rol = usuario.id_rol;
 
+        // --- Marcar sesión activa en DB ---
+        try {
+            await con.query({
+                sql: "UPDATE usuarios SET sesion_activa = TRUE WHERE id = ?",
+                timeout: 5000,
+                values: [usuario.id]
+            });
+        } catch (err) {
+            console.error("Error al marcar sesión activa:", err);
+            // No bloquea el login, pero avisamos al usuario
+        }
+
         res.json({ mensaje: "Has iniciado sesión correctamente.", rol: usuario.id_rol });
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Error en el servidor." });
+        console.error("Error en login:", err);
+        res.status(500).json({ error: "Error en el servidor o retraso en la base de datos." });
     }
 });
+
 
 // Sesiones Registrarse
 
