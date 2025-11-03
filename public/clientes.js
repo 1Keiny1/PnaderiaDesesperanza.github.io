@@ -128,42 +128,31 @@ function configurarCarritoVacio() {
 
 function configurarCompra() {
   const procederCompraBtn = document.getElementById("procederCompra");
-  if (!procederCompraBtn) return;
+  if (procederCompraBtn) {
+    procederCompraBtn.addEventListener("click", async () => {
+      if (!carrito.length) return alert("Tu carrito está vacío.");
 
-  procederCompraBtn.addEventListener("click", async () => {
-    if (!carrito.length) return alert("Tu carrito está vacío.");
+      try {
+        const res = await fetch("/comprar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ carrito }),
+          credentials: "include"
+        });
 
-    // Normalizar carrito: solo campos que necesita el backend
-    const carritoEnviar = carrito.map(p => ({
-      id_pan: Number(p.id_pan),
-      cantidad: Number(p.cantidad),
-      precio: Number(p.precio)
-    }));
+        const data = await res.json();
+        if (!res.ok) return alert(data.mensaje || data.error || "Error al procesar la compra.");
+        alert(data.mensaje || "Compra realizada con éxito 🎉");
 
-    try {
-      const res = await fetch("/comprar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ carrito: carritoEnviar }),
-        credentials: "include"
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) return alert(data.mensaje || data.error || "Error al procesar la compra.");
-
-      alert(data.mensaje || "Compra realizada con éxito 🎉");
-
-      // Vaciar carrito
-      carrito = [];
-      guardarCarrito();
-      renderCarrito();
-
-    } catch (err) {
-      console.error(err);
-      alert("Error al procesar la compra.");
-    }
-  });
+        carrito = [];
+        guardarCarrito();
+        renderCarrito();
+      } catch (err) {
+        console.error(err);
+        alert("Error al procesar la compra.");
+      }
+    });
+  }
 }
 
 function configurarLogout() {
