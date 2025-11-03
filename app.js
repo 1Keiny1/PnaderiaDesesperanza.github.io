@@ -600,18 +600,21 @@ app.post("/comprar", requireAuth, requireRole(3), async (req, res) => {
 
     // Verificar stock
     for (const p of carrito) {
+      const id = Number(p.id_pan);
+      const cantidad = Number(p.cantidad);
+
       const [rows] = await con.query(
         "SELECT cantidad, nombre FROM producto WHERE id_pan = ?",
-        [p.id_pan]
+        [id]
       );
 
-      if (rows.length === 0) throw new Error(`Producto ${p.nombre} no encontrado.`);
-      if (rows[0].cantidad < p.cantidad)
+      if (rows.length === 0) throw new Error(`Producto ${p.nombre || id} no encontrado.`);
+      if (rows[0].cantidad < cantidad)
         throw new Error(`No hay suficiente inventario de ${rows[0].nombre}. Disponible: ${rows[0].cantidad}`);
     }
 
     // Insertar venta
-    const total = carrito.reduce((acc, p) => acc + p.precio * p.cantidad, 0);
+    const total = carrito.reduce((acc, p) => acc + Number(p.precio) * Number(p.cantidad), 0);
     const [ventaResult] = await con.query(
       "INSERT INTO ventas (id_usuario, fecha, total) VALUES (?, NOW(), ?)",
       [req.session.userId, total]
@@ -620,16 +623,19 @@ app.post("/comprar", requireAuth, requireRole(3), async (req, res) => {
 
     // Insertar detalle y actualizar inventario
     for (const p of carrito) {
-      const subtotal = p.precio * p.cantidad;
+      const id = Number(p.id_pan);
+      const cantidad = Number(p.cantidad);
+      const precio = Number(p.precio);
+      const subtotal = cantidad * precio;
 
       await con.query(
         "INSERT INTO detalle_ventas (id_venta, id_pan, cantidad, subtotal, precio) VALUES (?, ?, ?, ?, ?)",
-        [idVenta, p.id_pan, p.cantidad, subtotal, p.precio]
+        [idVenta, id, cantidad, subtotal, precio]
       );
 
       await con.query(
         "UPDATE producto SET cantidad = cantidad - ? WHERE id_pan = ?",
-        [p.cantidad, p.id_pan]
+        [cantidad, id]
       );
     }
 
