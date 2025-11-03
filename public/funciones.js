@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch("/temporada/activar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_temporada: id })
+        body: JSON.stringify({ id_temporada: id }),
+        credentials: "include"
       });
 
       if (!res.ok) throw new Error("Error en la respuesta del servidor");
@@ -39,7 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch("/temporada/desactivar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
       });
       const data = await res.json();
       alert(data.mensaje || "Temporada desactivada correctamente");
@@ -56,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   function cargarProductos() {
-    fetch('/obtenerProducto')
+    fetch('/obtenerProducto', { credentials: "include" })
       .then(res => res.json())
       .then(productos => {
         const tbody = document.querySelector('#tablaProductos tbody');
@@ -145,7 +147,7 @@ function guardarProducto(e) {
     console.log("No se pudo listar FormData (ok):", err);
   }
 
-  fetch(url, { method: 'POST', body: formData })
+  fetch(url, { method: 'POST', body: formData, credentials: "include" })
     .then(res => res.json().catch(() => { throw new Error("Respuesta inválida del servidor"); }))
     .then(resp => {
       if (resp.error) {
@@ -190,7 +192,8 @@ function editarProducto(prodStr) {
     fetch('/borrarProducto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_pan: id })
+      body: JSON.stringify({ id_pan: id }),
+      credentials: "include"
     })
       .then(res => res.json())
       .then(resp => {

@@ -43,6 +43,38 @@ async function connectWithRetry(retries = 5, delay = 3000) {
 
 connectWithRetry();
 
+// --- Sesiones ---
+const session = require("express-session");
+const MySQLStore = require("express-mysql-session")(session);
+
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  clearExpired: true,
+  checkExpirationInterval: 900000, // cada 15 min limpia sesiones viejas
+  expiration: 86400000, // 1 día
+}, pool);
+
+app.set("trust proxy", 1); // 👈 NECESARIO en Render para cookies seguras
+
+app.use(session({
+  key: "sid",
+  secret: process.env.SESSION_SECRET,
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24, // 1 día
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production" // solo HTTPS en Render
+  }
+}));
+
+
 // Remover Tags
 function removeTags(html) {
     if (!html) return '';
@@ -104,25 +136,8 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: "No autorizado" });
 }
 
-// --- Sesiones ---
-const session = require("express-session");
-const MySQLStore = require("express-mysql-session")(session);
 
-const sessionStore = new MySQLStore({}, pool);
 
-app.use(session({
-  key: "sid",
-  secret: process.env.SESSION_SECRET,
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-  maxAge: 1000*60*60*24,
-  httpOnly: true,
-  sameSite: "none",
-  secure: true
-}
-}));
 
 // Sesiones Iniciar Sesion
 

@@ -137,6 +137,7 @@ function configurarCompra() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ carrito }),
+          credentials: "include"
         });
 
         const data = await res.json();
@@ -159,7 +160,7 @@ function configurarLogout() {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       try {
-        const res = await fetch("/logout", { method: "POST" });
+        const res = await fetch("/logout", { method: "POST", credentials: "include" });
         const data = await res.json();
         alert(data.mensaje);
         window.location.href = "index.html";
@@ -180,12 +181,12 @@ async function cargarProductosCliente() {
     if (contAnio) contAnio.innerHTML = "";
 
     // Productos temporada activa
-    const resTemp = await fetch("/productos-temporada-activa");
+    const resTemp = await fetch("/productos-temporada-activa", { credentials: "include" });
     const productosTemp = await resTemp.json();
     mostrarProductos(productosTemp, contTemp);
 
     // Productos todo el año
-    const resAnio = await fetch("/productos-todo-el-anio");
+    const resAnio = await fetch("/productos-todo-el-anio", { credentials: "include" });
     const productosAnio = await resAnio.json();
     mostrarProductos(productosAnio, contAnio);
   } catch (err) {
