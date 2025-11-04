@@ -585,7 +585,17 @@ app.get("/obtenerTemporadas", async (req, res) => {
 });
 
 // Procesar compra del carrito
-app.post("/comprar", requireAuth, requireRole(3), async (req, res) => {
+// Agrega este middleware ANTES de la ruta /comprar para ver qué está pasando
+
+app.post("/comprar", (req, res, next) => {
+  console.log("=== DEBUG COMPRA ===");
+  console.log("Session:", req.session);
+  console.log("userId:", req.session?.userId);
+  console.log("rol:", req.session?.rol);
+  console.log("Carrito recibido:", req.body.carrito);
+  console.log("==================");
+  next();
+}, requireAuth, requireRole(3), async (req, res) => {
   const { carrito } = req.body;
 
   if (!carrito || carrito.length === 0) {
