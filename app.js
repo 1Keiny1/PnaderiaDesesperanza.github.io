@@ -602,13 +602,16 @@ app.post("/comprar", (req, res, next) => {
     return res.status(400).json({ mensaje: "Carrito vacío" });
   }
 
+  // ⚠️ AQUÍ ESTÁ EL CAMBIO IMPORTANTE
+  const connection = await con.getConnection();
+
   try {
-    // Iniciar transacción
-    await con.beginTransaction();
+    // Iniciar transacción en la conexión individual
+    await connection.beginTransaction();
 
     // Verificar stock
     for (const p of carrito) {
-      const [rows] = await con.query(
+      const [rows] = await connection.query(
         "SELECT cantidad, nombre FROM producto WHERE id_pan = ?",
         [p.id_pan]
       );
@@ -620,7 +623,7 @@ app.post("/comprar", (req, res, next) => {
 
     // Insertar venta
     const total = carrito.reduce((acc, p) => acc + p.precio * p.cantidad, 0);
-    const [ventaResult] = await con.query(
+    const [ventaResult] = await connection.query(
       "INSERT INTO ventas (id_usuario, fecha, total) VALUES (?, NOW(), ?)",
       [req.session.userId, total]
     );
@@ -630,24 +633,27 @@ app.post("/comprar", (req, res, next) => {
     for (const p of carrito) {
       const subtotal = p.precio * p.cantidad;
 
-      await con.query(
+      await connection.query(
         "INSERT INTO detalle_ventas (id_venta, id_pan, cantidad, subtotal, precio) VALUES (?, ?, ?, ?, ?)",
         [idVenta, p.id_pan, p.cantidad, subtotal, p.precio]
       );
 
-      await con.query(
+      await connection.query(
         "UPDATE producto SET cantidad = cantidad - ? WHERE id_pan = ?",
         [p.cantidad, p.id_pan]
       );
     }
 
-    await con.commit();
+    await connection.commit();
     res.json({ mensaje: "Compra realizada con éxito", idVenta });
 
   } catch (error) {
-    await con.rollback();
+    await connection.rollback();
     console.error("Error durante compra:", error.message);
     res.status(400).json({ mensaje: error.message });
+  } finally {
+    // ⚠️ IMPORTANTE: Liberar la conexión de vuelta al pool
+    connection.release();
   }
 });
 
