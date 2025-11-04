@@ -590,56 +590,60 @@ app.get("/obtenerTemporadas", async (req, res) => {
 app.post("/comprar", requireAuth, requireRole(3), async (req, res) => {
   const { carrito } = req.body;
 
-  if (!carrito || carrito.length === 0) {
-    return res.status(400).json({ mensaje: "Carrito vacío" });
+  if (!Array.isArray(carrito) || carrito.length === 0) {
+    return res.status(400).json({ mensaje: "El carrito está vacío o mal formado." });
   }
 
-  try {
-    // Iniciar transacción
-    await con.beginTransaction();
+  const conn = con.promise();
 
-    // Verificar stock
+  try {
+    await conn.beginTransaction();
+
+    // Verificar stock de cada producto
     for (const p of carrito) {
-      const [rows] = await con.query(
+      const [rows] = await conn.query(
         "SELECT cantidad, nombre FROM producto WHERE id_pan = ?",
         [p.id_pan]
       );
 
-      if (rows.length === 0) throw new Error(`Producto ${p.nombre} no encontrado.`);
+      if (rows.length === 0)
+        throw new Error(`Producto ${p.nombre} no encontrado en la base de datos.`);
+
       if (rows[0].cantidad < p.cantidad)
-        throw new Error(`No hay suficiente inventario de ${rows[0].nombre}. Disponible: ${rows[0].cantidad}`);
+        throw new Error(`Stock insuficiente de ${rows[0].nombre}. Disponible: ${rows[0].cantidad}`);
     }
 
-    // Insertar venta
+    // Insertar venta principal
     const total = carrito.reduce((acc, p) => acc + p.precio * p.cantidad, 0);
-    const [ventaResult] = await con.query(
+    const [ventaResult] = await conn.query(
       "INSERT INTO ventas (id_usuario, fecha, total) VALUES (?, NOW(), ?)",
       [req.session.userId, total]
     );
+
     const idVenta = ventaResult.insertId;
 
-    // Insertar detalle y actualizar inventario
+    // Insertar detalles y actualizar inventario
     for (const p of carrito) {
       const subtotal = p.precio * p.cantidad;
 
-      await con.query(
+      await conn.query(
         "INSERT INTO detalle_ventas (id_venta, id_pan, cantidad, subtotal, precio) VALUES (?, ?, ?, ?, ?)",
         [idVenta, p.id_pan, p.cantidad, subtotal, p.precio]
       );
 
-      await con.query(
+      await conn.query(
         "UPDATE producto SET cantidad = cantidad - ? WHERE id_pan = ?",
         [p.cantidad, p.id_pan]
       );
     }
 
-    await con.commit();
-    res.json({ mensaje: "Compra realizada con éxito", idVenta });
+    await conn.commit();
+    res.json({ mensaje: "Compra realizada con éxito 🎉", idVenta });
 
   } catch (error) {
-    await con.rollback();
-    console.error("Error durante compra:", error.message);
-    res.status(400).json({ mensaje: error.message });
+    await conn.rollback();
+    console.error("Error en la compra:", error.message);
+    res.status(500).json({ mensaje: error.message || "Error interno al procesar la compra." });
   }
 });
 

@@ -128,31 +128,36 @@ function configurarCarritoVacio() {
 
 function configurarCompra() {
   const procederCompraBtn = document.getElementById("procederCompra");
-  if (procederCompraBtn) {
-    procederCompraBtn.addEventListener("click", async () => {
-      if (!carrito.length) return alert("Tu carrito está vacío.");
+  if (!procederCompraBtn) return;
 
-      try {
-        const res = await fetch("/comprar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ carrito }),
-          credentials: "include"
-        });
+  procederCompraBtn.addEventListener("click", async () => {
+    if (!carrito.length) return alert("Tu carrito está vacío.");
 
-        const data = await res.json();
-        if (!res.ok) return alert(data.mensaje || data.error || "Error al procesar la compra.");
-        alert(data.mensaje || "Compra realizada con éxito 🎉");
+    try {
+      const respuesta = await fetch("/comprar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ carrito }),
+        credentials: "include" // ✅ importante: para enviar cookies de sesión
+      });
 
-        carrito = [];
-        guardarCarrito();
-        renderCarrito();
-      } catch (err) {
-        console.error(err);
-        alert("Error al procesar la compra.");
+      const data = await respuesta.json();
+
+      if (!respuesta.ok) {
+        console.error("Error del servidor:", data);
+        return alert(data.mensaje || "Error al procesar la compra.");
       }
-    });
-  }
+
+      alert(data.mensaje || "Compra realizada con éxito 🎉");
+
+      carrito = [];
+      guardarCarrito();
+      renderCarrito();
+    } catch (error) {
+      console.error("Error de red o fetch:", error);
+      alert("No se pudo conectar con el servidor. Verifica tu conexión.");
+    }
+  });
 }
 
 function configurarLogout() {
